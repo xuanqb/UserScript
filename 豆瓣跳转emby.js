@@ -1,13 +1,15 @@
 // ==UserScript==
 // @name         豆瓣跳转至Emby
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      1.0.0
 // @description  在豆瓣电影页面检查Emby中是否存在当前影视，若存在则显示跳转至Emby的按钮
 // @author       Your name
 // @match        https://movie.douban.com/*
 // @grant        GM_xmlhttpRequest
 // @connect      *
 // @license      MIT
+// @note         23-10-25 0.1 豆瓣跳转至Emby
+// @note         23-10-25 1.0.0 修复年份查询不到问题
 // ==/UserScript==
 
 (function () {
@@ -31,7 +33,7 @@
     }
     async function searchEmbyByNameAndYear(dbMovie) {
         const name = dbMovie.name;
-        let yearParam = dbMovie.year ? `&Years=${dbMovie.year}` : '';
+        let yearParam = dbMovie.year ? `&Years=${dbMovie.year},${parseInt(dbMovie.year) - 1},${parseInt(dbMovie.year) + 1}` : '';
         let includeItemTypes = "IncludeItemTypes=movie";
         let ignorePlayed = "";
 
