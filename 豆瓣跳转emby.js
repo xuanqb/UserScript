@@ -1,15 +1,17 @@
 // ==UserScript==
 // @name         豆瓣跳转至Emby
 // @namespace    http://tampermonkey.net/
-// @version      1.0.0
+// @version      1.0.1
 // @description  在豆瓣电影页面检查Emby中是否存在当前影视，若存在则显示跳转至Emby的按钮
 // @author       Your name
 // @match        https://movie.douban.com/*
+// @match        *://m.douban.com/movie/subject/*
 // @grant        GM_xmlhttpRequest
 // @connect      *
 // @license      MIT
 // @note         23-10-25 0.1 豆瓣跳转至Emby
 // @note         23-10-25 1.0.0 修复年份查询不到问题
+// @note         23-10-26 1.0.1 支持移动端
 // ==/UserScript==
 
 (function () {
@@ -18,10 +20,12 @@
     const embyServer = 'http://192.168.123.8:58096'
     // emby api
     const embyApiKey = 'd54070cb3e4f4e99b0c557792608bba2'
+
     // 通过电影名称在Emby中进行检索
     function searchInEmby(movieName) {
         return searchEmbyByNameAndYear(movieName)
     }
+
     function httpRequest(options) {
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
@@ -31,6 +35,7 @@
             });
         });
     }
+
     async function searchEmbyByNameAndYear(dbMovie) {
         const name = dbMovie.name;
         let yearParam = dbMovie.year ? `&Years=${dbMovie.year},${parseInt(dbMovie.year) - 1},${parseInt(dbMovie.year) + 1}` : '';
@@ -43,9 +48,8 @@
             includeItemTypes = "IncludeItemTypes=Series";
         }
 
-
         const url = `${embyServer}/emby/Items?api_key=${embyApiKey}${ignorePlayed}&Recursive=true&${includeItemTypes}&SearchTerm=${name}${yearParam}`;
-        const response = await httpRequest({ method: 'get', url });
+        const response = await httpRequest({method: 'get', url});
         const data = JSON.parse(response.responseText);
 
         if (response.status === 200 && data.TotalRecordCount > 0) {
@@ -61,30 +65,66 @@
         }
     }
 
+    function formatTvName(name) {
+        return name.replace(/ 第[一二三四五六七八九十\d]+季/g, '')
+    }
+
 
     // 获取当前电影名称
     function getMovieName() {
-        let title = document.querySelector('title').innerText.replace(/(^\s*)|(\s*$)/g, '').replace(' (豆瓣)', '');
-        const subject = document.querySelector('.year').textContent.replace('(', '').replace(')', '');
-        const type = answerObj.TYPE;
-        if (type == "tv") {
-            title = title.replace(/ 第[一二三四五六七八九十\d]+季/g, '')
+        if (isPc()) {
+            let title = document.querySelector('title').innerText.replace(/(^\s*)|(\s*$)/g, '').replace(' (豆瓣)', '');
+            const subject = document.querySelector('.year').textContent.replace('(', '').replace(')', '');
+            const type = answerObj.TYPE;
+            if (type === "tv") {
+                title = formatTvName(title);
+            }
+            return {name: title, year: subject, type: type};
+        } else {
+            const titleArr = document.querySelector('.sub-original-title').textContent.split('（')
+            let title = titleArr[0]
+            let year = titleArr[1].split('）')[0]
+            let type = subject.type
+            if (type === "tv") {
+                title = formatTvName(title);
+            }
+            return {name: title, year: year, type: type};
         }
-        return { name: title, year: subject, type: type }
+
+    }
+
+    function isPc() {
+        return location.hostname === 'movie.douban.com';
     }
 
     // 添加一个按钮跳转到Emby
     async function addEmbyButton() {
-        const movieName = getMovieName();
-        const embyInfo = await searchInEmby(movieName)
+        let movieName = getMovieName();
+
+
+        const embyInfo = await searchInEmby(movieName);
         if (movieName && embyInfo) {
-            const subjectwrap = document.querySelector('h1');
-            const embyButton = document.createElement('span');
-            const subject = document.querySelector('.year');
-            subjectwrap.insertBefore(embyButton, subject.nextSibling);
-            embyButton.insertAdjacentHTML('afterend', createSvg(embyInfo, 'pc'))
+            // pc端
+            if (isPc()) {
+                const subjectwrap = document.querySelector('h1');
+                const embyButton = document.createElement('span');
+                subjectwrap.appendChild(embyButton);
+                embyButton.insertAdjacentHTML('afterend', createSvg(embyInfo, 'pc'))
+            } else {
+                // 移动端
+                const subjectwrap = document.querySelector('.sub-title');
+                if (!subjectwrap) {
+                    return;
+                }
+                const sectl = document.createElement('span');
+                subjectwrap.appendChild(sectl);
+                sectl.insertAdjacentHTML('afterend',
+                    createSvg(embyInfo, 'm')
+                );
+            }
         }
     }
+
     function createSvg(embyInfo, platform) {
         let style = ''
         if (platform == 'pc') {
