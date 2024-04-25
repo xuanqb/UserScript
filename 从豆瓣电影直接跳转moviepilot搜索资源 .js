@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         从豆瓣电影直接跳转moviepilot搜索资源
-// @version      0.0.4
+// @version      0.0.5
 // @description  从豆瓣电影跳转moviepilot搜索资源
 // @author       xuanqb
 // @match        *://movie.douban.com/subject/*
@@ -23,13 +23,12 @@ const mphost = 'http://192.168.123.8:3200';
         }
         const sectl = document.createElement('span');
         subjectwrap.appendChild(sectl);
-        sectl.insertAdjacentHTML('beforebegin',
-            createSvg(SID, 'm')
+        sectl.insertAdjacentHTML('afterend',
+            createSvg(SID, TYPE, 'm')
         );
     }
     // pc端
     if (host === 'movie.douban.com') {
-        const title = encodeURIComponent(document.querySelector('title').innerText.replace(/(^\s*)|(\s*$)/g, '').replace(' (豆瓣)', ''));
         const subjectwrap = document.querySelector('h1');
         const subject = document.querySelector('.year');
         if (!subjectwrap || !subject) {
@@ -37,22 +36,21 @@ const mphost = 'http://192.168.123.8:3200';
         }
         const sectl = document.createElement('span');
         subjectwrap.insertBefore(sectl, subject.nextSibling);
-        sectl.insertAdjacentHTML('beforebegin',
-            createSvg(answerObj.SUBJECT_ID, 'pc')
+        sectl.insertAdjacentHTML('afterend',
+            createSvg(answerObj.SUBJECT_ID, answerObj.TYPE, 'pc')
         );
     }
-    function createSvg(doubanid, platform) {
+
+    function createSvg(doubanid, type, platform) {
         let style = ''
-        if (platform == 'pc') {
+        type = type === 'movie' ? "电影" : "电视剧"
+        if (platform === 'pc') {
             style = '.cupfox:hover{background: #fff!important;}'
         }
         return `<style>.cupfox{vertical-align: middle;}${style}</style>
-            <a href="${mphost}/resource?keyword=douban:${doubanid}" class="cupfox" target="_blank">
+            <a href="${mphost}/#/resource?keyword=douban:${doubanid}&type=${type}" class="cupfox" style="width: 25px;height: 25px;display:inline-block;" target="_blank">
             <svg
-             width="25px"
-             height="25px"
              viewBox="0 0 192 192"
-             version="1.1"
              xmlns="http://www.w3.org/2000/svg"
              style="fill-rule: evenodd; clip-rule: evenodd; stroke-linejoin: round; stroke-miterlimit: 2"
              >
